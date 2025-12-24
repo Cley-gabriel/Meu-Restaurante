@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel da Cozinha</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #e9ecef; padding: 20px; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        
+        .container { display: flex; gap: 20px; }
+        .coluna { flex: 1; min-height: 80vh; background: #dee2e6; border-radius: 10px; padding: 15px; }
+        
+        h2 { text-align: center; color: #495057; border-bottom: 2px solid #adb5bd; padding-bottom: 10px; }
+        
+        .pedido { 
+            background: white; border-radius: 8px; padding: 15px; margin-bottom: 15px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-left: 10px solid #ffc107;
+        }
+        .concluido { border-left-color: #28a745; opacity: 0.8; }
+        
+        .pedido-header { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .cliente { color: #2c3e50; font-weight: bold; }
+        
+        ul { list-style: none; padding: 0; }
+        li { padding: 5px 0; font-size: 1.1em; color: #333; }
+        
+        .btn-concluir { width: 100%; background: #28a745; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-limpar { background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>👨‍🍳 Painel de Pedidos</h1>
+        <button class="btn-limpar" onclick="limparTudo()">🗑️ Limpar Histórico</button>
+    </header>
+
+    <div class="container">
+        <div class="coluna">
+            <h2>⏳ Pendentes</h2>
+            <div id="lista-pendentes"></div>
+        </div>
+
+        <div class="coluna">
+            <h2>✅ Concluídos</h2>
+            <div id="lista-concluidos"></div>
+        </div>
+    </div>
+
+    <script>
+        function carregarDados() {
+            // Buscar Pendentes
+            fetch('/api/orders/kitchen')
+                .then(res => res.json())
+                .then(data => renderizar(data, 'lista-pendentes', true));
+
+            // Buscar Histórico
+            fetch('/api/orders/history')
+                .then(res => res.json())
+                .then(data => renderizar(data, 'lista-concluidos', false));
+        }
+
+        function renderizar(pedidos, elementoId, mostrarBotao) {
+            const container = document.getElementById(elementoId);
+            container.innerHTML = pedidos.map(p => `
+                <div class="pedido ${mostrarBotao ? '' : 'concluido'}">
+                    <div class="pedido-header">
+                        <span class="cliente">👤 ${p.customer_name}</span>
+                        <span>🪑 Mesa ${p.table_number}</span>
+                    </div>
+                    <ul>
+                        ${p.items && p.items.length > 0 
+                            ? p.items.map(item => `<li>✅ ${item.quantity}x <b>${item.name}</b></li>`).join('') 
+                            : '<li><i>Nenhum item encontrado</i></li>'}
+                    </ul>
+                    ${mostrarBotao ? `<button class="btn-concluir" onclick="finalizar(${p.ID})">CONCLUIR</button>` : '<b>✓ Finalizado</b>'}
+                </div>
+            `).join('');
+        }
+
+        function finalizar(id) {
+            fetch(`/api/orders/${id}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'completed' })
+            }).then(() => carregarDados());
+        }
+
+        function limparTudo() {
+            if (confirm("Deseja apagar permanentemente todos os pedidos concluídos?")) {
+                fetch('/api/orders/clear', { method: 'DELETE' }).then(() => carregarDados());
+            }
+        }
+
+        // Atualiza a tela a cada 3 segundos automaticamente
+        setInterval(carregarDados, 3000);
+        carregarDados();
+    </script>
+</body>
+</html>

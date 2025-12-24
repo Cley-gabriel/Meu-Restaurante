@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cardápio Digital</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #f4f4f9; }
+        .container { max-width: 600px; margin: auto; }
+        h1 { text-align: center; color: #333; }
+        
+        .setup-section { 
+            background: #fff; padding: 20px; border-radius: 10px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; 
+        }
+        input { 
+            width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; 
+            border-radius: 5px; box-sizing: border-box; font-size: 16px;
+        }
+
+        .card { 
+            background: #fff; padding: 15px; border-radius: 10px; 
+            margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .info h3 { margin: 0; color: #d35400; }
+        .info p { margin: 5px 0; color: #666; font-size: 14px; }
+        
+        button { 
+            background: #27ae60; color: white; border: none; padding: 10px 20px; 
+            border-radius: 5px; cursor: pointer; font-weight: bold; 
+        }
+        button:hover { background: #2ecc71; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍽️ Nosso Cardápio</h1>
+
+        <div class="setup-section">
+            <label><b>Seu Nome:</b></label>
+            <input type="text" id="cliente_nome" placeholder="Ex: João Silva">
+            <label><b>Número da Mesa:</b></label>
+            <input type="number" id="mesa_num" placeholder="Ex: 05">
+        </div>
+
+        <div id="cardapio">
+            </div>
+    </div>
+
+    <script>
+        // Carrega o cardápio do servidor
+        fetch('/api/menu')
+            .then(res => res.json())
+            .then(itens => {
+                const div = document.getElementById('cardapio');
+                div.innerHTML = itens.map(item => `
+                    <div class="card">
+                        <div class="info">
+                            <h3>${item.name}</h3>
+                            <p>${item.description}</p>
+                            <strong>R$ ${item.price.toFixed(2)}</strong>
+                        </div>
+                        <button onclick="fazerPedido(${item.ID})">Pedir</button>
+                    </div>
+                `).join('');
+            });
+
+        function fazerPedido(menuItemId) {
+            const nomeInput = document.getElementById('cliente_nome');
+            const mesaInput = document.getElementById('mesa_num');
+
+            // Validação Obrigatória
+            if (!nomeInput.value.trim() || !mesaInput.value) {
+                alert("⚠️ Por favor, informe seu nome e o número da mesa antes de pedir!");
+                nomeInput.focus();
+                return;
+            }
+
+            const pedido = {
+                customer_name: nomeInput.value,
+                table_number: parseInt(mesaInput.value),
+                items: [{ menu_item_id: menuItemId, quantity: 1 }]
+            };
+
+            fetch('/api/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(pedido)
+            })
+            .then(res => {
+                if (res.ok) alert("✅ Pedido enviado! Aguarde na mesa.");
+                else alert("❌ Erro ao enviar. Verifique os dados.");
+            });
+        }
+    </script>
+</body>
+</html>
